@@ -8,7 +8,7 @@
 - **What was wrong:** The initial setup required checking that the environment and dependencies were correctly configured on my Windows system.
 - **What I did instead:** Created the project folder, configured the virtual environment, and installed the required dependencies.
 - **Result:** The development environment was ready for application development.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/92492d0fb6245f7b264d6413694a952bb22fbb26
 
 ## Entry 2 - 2026-10-23
 
@@ -18,7 +18,7 @@
 - **What was wrong:** The page needed to be connected to the Flask application and use the correct template structure.
 - **What I did instead:** Created the landing page and tested it in the browser.
 - **Result:** The TrustVault landing page opened successfully on the local development server.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/57d86f9a43214cd92f388ca37dec1421066ef3e2
 
 ## Entry 3 - 2026-10-23
 
@@ -28,7 +28,7 @@
 - **What was wrong:** The application needed a working user loader to manage authenticated sessions correctly.
 - **What I did instead:** Updated the user loader and tested the authentication flow.
 - **Result:** The Flask-Login user loader was configured.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/2ac16b1fd2dc944cb15af55d3d4c131a547c69d8
 
 ## Entry 4 - 2026-10-23
 
@@ -38,7 +38,7 @@
 - **What was wrong:** The authentication pages and routes needed to work together with the database and session management.
 - **What I did instead:** Implemented the registration and login flow and tested the application locally.
 - **Result:** Registration, login, dashboard, and logout functionality were added.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/856e27570dbd05fdacf60d9359659e28d5a183ee
 
 ## Entry 5 - 2026-10-23
 
@@ -48,7 +48,7 @@
 - **What was wrong:** Hiding the download link alone would not prove that server-side authorization was enforced.
 - **What I did instead:** Tested the direct download URL using the friend123 account.
 - **Test result:** The server returned HTTP 403 Forbidden for the unauthorized download attempt.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/08a5ee3288d24b4b5b655c438dfb84a0b77b367d
 
 ## Entry 6 - 2026-10-23
 
@@ -58,4 +58,4 @@
 - **What was wrong:** The existing download route recorded successful downloads but did not record denied download attempts.
 - **What I changed:** Added an audit event for unauthorized download attempts before returning the forbidden response.
 - **Test result:** Tested the view-only document download again. The server returned HTTP 403, and the Admin Dashboard showed the document_download_denied event for Akila_Resume.pdf.
-- **Commit link:** Add the actual GitHub commit URL after pushing.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/63e26d07c40b304dee393f3f1cb29c377a97da41
