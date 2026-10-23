@@ -7,3 +7,5 @@ instance/
 uploads/
 private_uploads/
 .pytest_cache/
+
+*.db
