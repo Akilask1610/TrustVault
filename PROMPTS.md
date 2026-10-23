@@ -25,3 +25,12 @@
 
 
 
+## Entry 3 — 2026-10-23
+
+- **Task:** Configure Flask-Login user loading.
+- **Prompt:** Help diagnose the Missing user_loader or request_loader exception.
+- **AI output:** Add a user_loader callback and make the User model inherit from UserMixin.
+- **What was wrong:** Flask-Login was initialized without a callback to retrieve a user from the stored user ID.
+- **What I changed:** Added a user_loader function that retrieves the user from the database and handles invalid user IDs. Added UserMixin to the User model.
+- **Test:** Reopen the local landing page and verify that the exception no longer occurs.
+- **Commit link:** Add the actual GitHub commit URL after pushing, if available.
