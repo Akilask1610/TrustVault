@@ -48,3 +48,22 @@
   structure and initialized SQLAlchemy only once.
 - **Testing:** Record actual registration, login, and logout results.
 - **Commit link:** Add the real GitHub commit URL after pushing.
+## Entry 5 - 2026-10-23
+
+- **Task:** Test document-sharing authorization and download permissions.
+- **Prompt:** Help me verify that view-only sharing prevents unauthorized document downloads.
+- **AI output:** Guidance to test the recipient account and verify that the server rejects direct download requests without permission.
+- **What was wrong:** Hiding the download link alone would not prove that server-side authorization was enforced.
+- **What I did instead:** Tested the direct download URL using the friend123 account. The server returned HTTP 403 Forbidden.
+- **Test result:** The unauthorized download was blocked. This verifies the tested view-only access case.
+- **Commit link:** Add the actual GitHub commit URL after pushing.
+
+## Entry 6 - 2026-10-23
+
+- **Task:** Record denied document-download attempts in the audit trail.
+- **Prompt:** Help me add audit logging for download attempts rejected by the authorization check.
+- **AI output:** Add a document_download_denied audit event before returning HTTP 403.
+- **What was wrong:** The existing download route recorded successful downloads but did not record denied download attempts.
+- **What I changed:** Added an audit event for unauthorized download attempts and committed the application changes.
+- **Test result:** Tested the view-only document download again. The server returned HTTP 403, and the Admin Dashboard showed document_download_denied for Akila_Resume.pdf.
+- **Commit link:** Add the actual GitHub commit URL after pushing.
