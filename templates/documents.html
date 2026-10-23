@@ -1,0 +1,108 @@
+
+{% extends "base.html" %}
+
+{% block title %}My Documents - TrustVault{% endblock %}
+
+{% block content %}
+<section class="panel">
+    <h1>My Documents</h1>
+
+    <p class="muted">
+        Maximum file size: 10 MB.
+        Allowed types: PDF, TXT, PNG, JPG, DOCX, XLSX.
+    </p>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token() }}">
+
+        <label for="document">Choose Document</label>
+        <input id="document"
+               type="file"
+               name="document"
+               accept=".pdf,.txt,.png,.jpg,.jpeg,.docx,.xlsx"
+               required>
+
+        <button type="submit">Upload Document</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Available Documents</h2>
+
+    {% if documents %}
+        {% for doc in documents %}
+            <article class="doc">
+                <h3>{{ doc.original_filename }}</h3>
+
+                <p class="muted">
+                    Owner:
+                    {{ doc.owner.username if doc.owner else "Unknown" }}
+                    · Uploaded: {{ doc.uploaded_at }}
+                </p>
+
+                <p>
+                    <strong>SHA-256 Integrity Hash</strong><br>
+                    <code>{{ doc.sha256_hash }}</code>
+                </p>
+
+                {% if doc.owner_id == current_user.id %}
+                    <p>
+                        <a class="button"
+                           href="{{ url_for('download_document',
+                                            document_id=doc.id) }}">
+                            Download
+                        </a>
+                    </p>
+
+                    <form method="POST"
+                          action="{{ url_for('share_document',
+                                             document_id=doc.id) }}">
+                        <input type="hidden"
+                               name="csrf_token"
+                               value="{{ csrf_token() }}">
+
+                        <label for="username-{{ doc.id }}">
+                            Recipient Username
+                        </label>
+                        <input id="username-{{ doc.id }}"
+                               name="username"
+                               maxlength="80"
+                               placeholder="Enter existing username"
+                               required>
+
+                        <label for="permission-{{ doc.id }}">
+                            Permission
+                        </label>
+                        <select id="permission-{{ doc.id }}"
+                                name="permission">
+                            <option value="view">View Only</option>
+                            <option value="download">Allow Download</option>
+                        </select>
+
+                        <button type="submit">Share Document</button>
+                    </form>
+
+                {% elif permissions.get(doc.id, false) %}
+                    <p>
+                        <a class="button"
+                           href="{{ url_for('download_document',
+                                            document_id=doc.id) }}">
+                            Download Shared Document
+                        </a>
+                    </p>
+                    <p class="muted">Download permission is enabled.</p>
+
+                {% else %}
+                    <p class="muted">
+                        View-only access. Download is not permitted.
+                    </p>
+                {% endif %}
+            </article>
+        {% endfor %}
+    {% else %}
+        <p>No documents uploaded yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

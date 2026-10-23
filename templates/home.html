@@ -1,0 +1,30 @@
+
+{% extends "base.html" %}
+
+{% block title %}TrustVault - Home{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <p class="muted">SECURE DOCUMENT WORKSPACE</p>
+    <h1>Welcome to TrustVault</h1>
+
+    <p>
+        Securely manage and share documents with controlled access,
+        SHA-256 integrity hashes, and audit records.
+    </p>
+
+    {% if current_user.is_authenticated %}
+        <p>Welcome, <strong>{{ current_user.username }}</strong>!</p>
+        <a class="button" href="{{ url_for('dashboard') }}">
+            Open Dashboard
+        </a>
+    {% else %}
+        <a class="button" href="{{ url_for('register') }}">
+            Create Account
+        </a>
+        <a class="button secondary" href="{{ url_for('login') }}">
+            Login
+        </a>
+    {% endif %}
+</section>
+{% endblock %}

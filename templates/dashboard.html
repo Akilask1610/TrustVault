@@ -1,0 +1,40 @@
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TrustVault{% endblock %}
+
+{% block content %}
+<section class="panel">
+    <p class="muted">YOUR WORKSPACE</p>
+    <h1>Hello, {{ current_user.username }}!</h1>
+
+    <p>
+        Account role: <strong>{{ current_user.role }}</strong>
+    </p>
+
+    <div class="grid">
+        <div class="stat">
+            Your Documents
+            <strong>{{ owned_count }}</strong>
+        </div>
+
+        <div class="stat">
+            Shared With You
+            <strong>{{ shared_count }}</strong>
+        </div>
+    </div>
+
+    <p style="margin-top: 22px;">
+        <a class="button" href="{{ url_for('documents') }}">
+            Manage Documents
+        </a>
+
+        {% if current_user.role == 'admin' %}
+            <a class="button secondary"
+               href="{{ url_for('admin_dashboard') }}">
+                Admin Dashboard
+            </a>
+        {% endif %}
+    </p>
+</section>
+{% endblock %}

@@ -1,49 +1,36 @@
+
 import os
-import hashlib
 import uuid
+import hashlib
 from pathlib import Path
 
 from flask import (
-    Flask,
-    render_template_string,
-    request,
-    redirect,
-    url_for,
-    flash,
-    send_from_directory,
-    abort,
+    Flask, abort, flash, redirect, render_template,
+    request, send_from_directory, url_for
+)
+from flask_login import (
+    LoginManager, UserMixin, current_user, login_required,
+    login_user, logout_user
 )
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import (
-    LoginManager,
-    UserMixin,
-    login_user,
-    logout_user,
-    login_required,
-    current_user,
-)
 from flask_wtf.csrf import CSRFProtect
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 
-# --------------------------------------------------
-# 1. Application configuration
-# --------------------------------------------------
+# -------------------- CONFIGURATION --------------------
 
 app = Flask(__name__)
-
 app.config["SECRET_KEY"] = os.environ.get(
-    "SECRET_KEY", "dev-only-change-this-before-deployment"
+    "SECRET_KEY", "change-this-before-deployment"
 )
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///trustvault.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
-BASE_DIR = Path(app.root_path)
-UPLOAD_FOLDER = BASE_DIR / "private_uploads"
+UPLOAD_FOLDER = Path(app.root_path) / "private_uploads"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
 ALLOWED_EXTENSIONS = {
@@ -51,44 +38,21 @@ ALLOWED_EXTENSIONS = {
 }
 
 db = SQLAlchemy(app)
+csrf = CSRFProtect(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-csrf = CSRFProtect(app)
 
-
-# --------------------------------------------------
-# 2. Database models
-# --------------------------------------------------
+# -------------------- DATABASE MODELS --------------------
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
-    username = db.Column(
-        db.String(80),
-        unique=True,
-        nullable=False,
-    )
-
-    password_hash = db.Column(
-        db.String(255),
-        nullable=False,
-    )
-
-    role = db.Column(
-        db.String(20),
-        nullable=False,
-        default="user",
-    )
-
-    # Current demo version: all users belong to tenant 1.
-    tenant_id = db.Column(
-        db.Integer,
-        nullable=False,
-        default=1,
-    )
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default="user")
+    tenant_id = db.Column(db.Integer, nullable=False, default=1)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -99,167 +63,93 @@ class User(UserMixin, db.Model):
 
 class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
-    original_filename = db.Column(
-        db.String(255),
-        nullable=False,
-    )
-
-    stored_filename = db.Column(
-        db.String(255),
-        unique=True,
-        nullable=False,
-    )
-
-    sha256_hash = db.Column(
-        db.String(64),
-        nullable=False,
-    )
-
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_filename = db.Column(db.String(255), unique=True, nullable=False)
+    sha256_hash = db.Column(db.String(64), nullable=False)
     owner_id = db.Column(
-        db.Integer,
-        db.ForeignKey("user.id"),
-        nullable=False,
-        index=True,
+        db.Integer, db.ForeignKey("user.id"), nullable=False, index=True
     )
-
-    tenant_id = db.Column(
-        db.Integer,
-        nullable=False,
-        index=True,
-    )
-
+    tenant_id = db.Column(db.Integer, nullable=False, index=True)
     uploaded_at = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=db.func.current_timestamp(),
+        db.DateTime, nullable=False, default=db.func.current_timestamp()
     )
-
     owner = db.relationship("User", backref="documents")
 
 
 class DocumentShare(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
     document_id = db.Column(
-        db.Integer,
-        db.ForeignKey("document.id"),
-        nullable=False,
+        db.Integer, db.ForeignKey("document.id"), nullable=False
     )
-
     shared_with_id = db.Column(
-        db.Integer,
-        db.ForeignKey("user.id"),
-        nullable=False,
+        db.Integer, db.ForeignKey("user.id"), nullable=False
     )
-
     shared_by_id = db.Column(
-        db.Integer,
-        db.ForeignKey("user.id"),
-        nullable=False,
+        db.Integer, db.ForeignKey("user.id"), nullable=False
     )
-
     tenant_id = db.Column(db.Integer, nullable=False)
-
-    can_download = db.Column(
-        db.Boolean,
-        nullable=False,
-        default=False,
-    )
-
+    can_download = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=db.func.current_timestamp(),
+        db.DateTime, nullable=False, default=db.func.current_timestamp()
     )
-
     __table_args__ = (
         db.UniqueConstraint(
-            "document_id",
-            "shared_with_id",
-            name="unique_document_share",
+            "document_id", "shared_with_id",
+            name="unique_document_share"
         ),
     )
 
 
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
-    actor_id = db.Column(
-        db.Integer,
-        db.ForeignKey("user.id"),
-        nullable=True,
-    )
-
+    actor_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     document_id = db.Column(
-        db.Integer,
-        db.ForeignKey("document.id"),
-        nullable=True,
+        db.Integer, db.ForeignKey("document.id"), nullable=True
     )
-
     target_user_id = db.Column(
-        db.Integer,
-        db.ForeignKey("user.id"),
-        nullable=True,
+        db.Integer, db.ForeignKey("user.id"), nullable=True
     )
-
     tenant_id = db.Column(db.Integer, nullable=False)
-
-    action = db.Column(
-        db.String(80),
-        nullable=False,
-    )
-
-    details = db.Column(
-        db.String(500),
-        nullable=True,
-    )
-
+    action = db.Column(db.String(80), nullable=False)
+    details = db.Column(db.String(500))
     created_at = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=db.func.current_timestamp(),
+        db.DateTime, nullable=False, default=db.func.current_timestamp()
     )
 
 
-# --------------------------------------------------
-# 3. Login manager and audit helper
-# --------------------------------------------------
+# -------------------- LOGIN SUPPORT --------------------
 
 @login_manager.user_loader
 def load_user(user_id):
     try:
         return db.session.get(User, int(user_id))
-    except (ValueError, TypeError):
+    except (TypeError, ValueError):
         return None
 
 
-def record_audit(
-    action,
-    document_id=None,
-    target_user_id=None,
-    details=None,
-):
-    if not current_user.is_authenticated:
-        return
+def record_audit(action, document_id=None,
+                 target_user_id=None, details=None):
+    if current_user.is_authenticated:
+        db.session.add(
+            AuditLog(
+                actor_id=current_user.id,
+                document_id=document_id,
+                target_user_id=target_user_id,
+                tenant_id=current_user.tenant_id,
+                action=action,
+                details=details,
+            )
+        )
 
-    log = AuditLog(
-        actor_id=current_user.id,
-        document_id=document_id,
-        target_user_id=target_user_id,
-        tenant_id=current_user.tenant_id,
-        action=action,
-        details=details,
+
+def allowed_file(filename):
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
-    db.session.add(log)
 
-
-# --------------------------------------------------
-# 4. File utilities
-# --------------------------------------------------
-
-def file_sha256(file_path):
+def calculate_sha256(file_path):
     digest = hashlib.sha256()
 
     with open(file_path, "rb") as file:
@@ -269,176 +159,14 @@ def file_sha256(file_path):
     return digest.hexdigest()
 
 
-def allowed_file(filename):
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower()
-        in ALLOWED_EXTENSIONS
-    )
-
-
-# --------------------------------------------------
-# 5. Common page styling
-# --------------------------------------------------
-
-PAGE_STYLE = """
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #101827;
-        color: white;
-        text-align: center;
-        padding: 30px 15px;
-    }
-
-    .panel {
-        max-width: 760px;
-        margin: 25px auto;
-        padding: 26px;
-        background: #1e293b;
-        border-radius: 12px;
-    }
-
-    input, button, select {
-        width: 100%;
-        padding: 11px;
-        margin: 8px 0;
-        box-sizing: border-box;
-        border-radius: 6px;
-    }
-
-    input, select {
-        border: 1px solid #64748b;
-    }
-
-    button {
-        background: #38bdf8;
-        border: none;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    a {
-        color: #7dd3fc;
-    }
-
-    .message {
-        color: #fde68a;
-    }
-
-    .document-card {
-        text-align: left;
-        margin: 18px 0;
-        padding: 16px;
-        background: #263449;
-        border-radius: 8px;
-        overflow-wrap: anywhere;
-    }
-
-    code {
-        overflow-wrap: anywhere;
-    }
-
-    .inline-form {
-        max-width: 420px;
-    }
-</style>
-"""
-
-
-BASE_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TrustVault</title>
-    {{ style|safe }}
-</head>
-<body>
-    <div class="panel">
-        {{ content|safe }}
-    </div>
-</body>
-</html>
-"""
-
-
-FLASH_TEMPLATE = """
-{% with messages = get_flashed_messages() %}
-    {% for message in messages %}
-        <p class="message">{{ message }}</p>
-    {% endfor %}
-{% endwith %}
-"""
-
-
-def page(content, **context):
-    template = BASE_TEMPLATE.replace(
-        "{{ content|safe }}",
-        content,
-    )
-
-    return render_template_string(
-        template,
-        style=PAGE_STYLE,
-        **context,
-    )
-
-
-# --------------------------------------------------
-# 6. Home page
-# --------------------------------------------------
+# -------------------- HOME --------------------
 
 @app.route("/")
 def home():
-    content = """
-    <h1>TrustVault</h1>
-
-    <h3>Secure Document Sharing Platform</h3>
-
-    <p>
-        Manage documents with controlled access
-        and an audit trail.
-    </p>
-
-    {% if current_user.is_authenticated %}
-        <p>Welcome, {{ current_user.username }}!</p>
-
-        <p>
-            <a href="{{ url_for('dashboard') }}">
-                Open Dashboard
-            </a>
-        </p>
-
-        <form method="POST" action="{{ url_for('logout') }}">
-            <input type="hidden"
-                   name="csrf_token"
-                   value="{{ csrf_token() }}">
-
-            <button type="submit">Logout</button>
-        </form>
-    {% else %}
-        <p>
-            <a href="{{ url_for('register') }}">
-                Create Account
-            </a>
-        </p>
-
-        <p>
-            <a href="{{ url_for('login') }}">
-                Login
-            </a>
-        </p>
-    {% endif %}
-    """
-
-    return page(content)
+    return render_template("home.html")
 
 
-# --------------------------------------------------
-# 7. User registration
-# --------------------------------------------------
+# -------------------- REGISTRATION --------------------
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -446,95 +174,47 @@ def register():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = request.form.get(
-            "username", ""
-        ).strip()
-
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-
-        confirm_password = request.form.get(
-            "confirm_password", ""
-        )
+        confirm_password = request.form.get("confirm_password", "")
 
         if not username or not password:
-            flash("Username and password are required.")
+            flash("Username and password are required.", "error")
 
         elif len(username) > 80:
-            flash("Username must be 80 characters or fewer.")
+            flash("Username must be 80 characters or fewer.", "error")
 
         elif len(password) < 8:
-            flash("Password must contain at least 8 characters.")
+            flash("Password must contain at least 8 characters.", "error")
 
         elif password != confirm_password:
-            flash("Passwords do not match.")
+            flash("Passwords do not match.", "error")
 
-        elif User.query.filter_by(
-            username=username
-        ).first():
-            flash("Username already exists.")
+        elif User.query.filter_by(username=username).first():
+            flash("Username already exists.", "error")
 
         else:
             user = User(
                 username=username,
                 role="user",
-                tenant_id=1,
+                tenant_id=1
             )
-
             user.set_password(password)
-
             db.session.add(user)
-            db.session.commit()
 
-            flash("Registration successful. Please log in.")
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                flash("Username already exists.", "error")
+            else:
+                flash("Account created. Please log in.", "success")
+                return redirect(url_for("login"))
 
-            return redirect(url_for("login"))
-
-    content = """
-    <h1>Create Account</h1>
-
-    """ + FLASH_TEMPLATE + """
-
-    <form method="POST">
-        <input type="hidden"
-               name="csrf_token"
-               value="{{ csrf_token() }}">
-
-        <input type="text"
-               name="username"
-               placeholder="Username"
-               maxlength="80"
-               required>
-
-        <input type="password"
-               name="password"
-               placeholder="Password (minimum 8 characters)"
-               minlength="8"
-               required>
-
-        <input type="password"
-               name="confirm_password"
-               placeholder="Confirm password"
-               required>
-
-        <button type="submit">Register</button>
-    </form>
-
-    <p>
-        Already registered?
-        <a href="{{ url_for('login') }}">Login</a>
-    </p>
-
-    <p>
-        <a href="{{ url_for('home') }}">Home</a>
-    </p>
-    """
-
-    return page(content)
+    return render_template("register.html")
 
 
-# --------------------------------------------------
-# 8. User login
-# --------------------------------------------------
+# -------------------- LOGIN --------------------
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -542,115 +222,45 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = request.form.get(
-            "username", ""
-        ).strip()
-
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        user = User.query.filter_by(
-            username=username
-        ).first()
+        user = User.query.filter_by(username=username).first()
 
         if user and user.check_password(password):
             login_user(user)
-
-            record_audit(
-                "login",
-                details="User logged in",
-            )
-
+            record_audit("login", details="User logged in")
             db.session.commit()
-
             return redirect(url_for("dashboard"))
 
-        flash("Invalid username or password.")
+        flash("Invalid username or password.", "error")
 
-    content = """
-    <h1>Login</h1>
-
-    """ + FLASH_TEMPLATE + """
-
-    <form method="POST">
-        <input type="hidden"
-               name="csrf_token"
-               value="{{ csrf_token() }}">
-
-        <input type="text"
-               name="username"
-               placeholder="Username"
-               required>
-
-        <input type="password"
-               name="password"
-               placeholder="Password"
-               required>
-
-        <button type="submit">Login</button>
-    </form>
-
-    <p>
-        New user?
-        <a href="{{ url_for('register') }}">
-            Create account
-        </a>
-    </p>
-
-    <p>
-        <a href="{{ url_for('home') }}">Home</a>
-    </p>
-    """
-
-    return page(content)
+    return render_template("login.html")
 
 
-# --------------------------------------------------
-# 9. User dashboard
-# --------------------------------------------------
+# -------------------- DASHBOARD --------------------
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    content = """
-    <h1>TrustVault Dashboard</h1>
+    owned_count = Document.query.filter_by(
+        owner_id=current_user.id,
+        tenant_id=current_user.tenant_id
+    ).count()
 
-    <p>Welcome, {{ current_user.username }}!</p>
+    shared_count = DocumentShare.query.filter_by(
+        shared_with_id=current_user.id,
+        tenant_id=current_user.tenant_id
+    ).count()
 
-    <p>Your role: {{ current_user.role }}</p>
-
-    <p>
-        <a href="{{ url_for('documents') }}">
-            Open My Documents
-        </a>
-    </p>
-
-    {% if current_user.role == "admin" %}
-        <p>
-            <a href="{{ url_for('admin_dashboard') }}">
-                Open Admin Dashboard
-            </a>
-        </p>
-    {% endif %}
-
-    <form method="POST" action="{{ url_for('logout') }}">
-        <input type="hidden"
-               name="csrf_token"
-               value="{{ csrf_token() }}">
-
-        <button type="submit">Logout</button>
-    </form>
-
-    <p>
-        <a href="{{ url_for('home') }}">Home</a>
-    </p>
-    """
-
-    return page(content)
+    return render_template(
+        "dashboard.html",
+        owned_count=owned_count,
+        shared_count=shared_count
+    )
 
 
-# --------------------------------------------------
-# 10. Document upload and document list
-# --------------------------------------------------
+# -------------------- DOCUMENT MANAGEMENT --------------------
 
 @app.route("/documents", methods=["GET", "POST"])
 @login_required
@@ -659,42 +269,28 @@ def documents():
         uploaded_file = request.files.get("document")
 
         if not uploaded_file or not uploaded_file.filename:
-            flash("Please select a file.")
+            flash("Please choose a document.", "error")
             return redirect(url_for("documents"))
 
-        safe_original_name = secure_filename(
-            uploaded_file.filename
-        )
+        filename = secure_filename(uploaded_file.filename)
 
-        if not safe_original_name:
-            flash("Invalid filename.")
+        if not filename or not allowed_file(filename):
+            flash("Unsupported file type.", "error")
             return redirect(url_for("documents"))
 
-        if not allowed_file(safe_original_name):
-            flash("This file type is not allowed.")
-            return redirect(url_for("documents"))
-
-        extension = safe_original_name.rsplit(
-            ".", 1
-        )[1].lower()
-
-        stored_name = f"{uuid.uuid4().hex}.{extension}"
-
-        destination = (
-            Path(app.config["UPLOAD_FOLDER"]) / stored_name
-        )
+        extension = filename.rsplit(".", 1)[1].lower()
+        stored_filename = f"{uuid.uuid4().hex}.{extension}"
+        destination = Path(app.config["UPLOAD_FOLDER"]) / stored_filename
 
         try:
             uploaded_file.save(destination)
 
-            digest = file_sha256(destination)
-
             document = Document(
-                original_filename=safe_original_name,
-                stored_filename=stored_name,
-                sha256_hash=digest,
+                original_filename=filename,
+                stored_filename=stored_filename,
+                sha256_hash=calculate_sha256(destination),
                 owner_id=current_user.id,
-                tenant_id=current_user.tenant_id,
+                tenant_id=current_user.tenant_id
             )
 
             db.session.add(document)
@@ -703,12 +299,11 @@ def documents():
             record_audit(
                 "document_upload",
                 document_id=document.id,
-                details=f"Uploaded {safe_original_name}",
+                details=f"Uploaded {filename}"
             )
 
             db.session.commit()
-
-            flash("Document uploaded successfully.")
+            flash("Document uploaded successfully.", "success")
 
         except Exception:
             db.session.rollback()
@@ -716,171 +311,51 @@ def documents():
             if destination.exists():
                 destination.unlink()
 
-            app.logger.exception(
-                "Document upload failed"
-            )
-
-            flash("Upload failed. Please try again.")
+            app.logger.exception("Document upload failed")
+            flash("Upload failed. Please try again.", "error")
 
         return redirect(url_for("documents"))
 
     owned_documents = Document.query.filter_by(
         owner_id=current_user.id,
-        tenant_id=current_user.tenant_id,
-    ).all()
+        tenant_id=current_user.tenant_id
+    ).order_by(Document.uploaded_at.desc()).all()
 
-    my_shares = DocumentShare.query.filter_by(
+    shares = DocumentShare.query.filter_by(
         shared_with_id=current_user.id,
-        tenant_id=current_user.tenant_id,
+        tenant_id=current_user.tenant_id
     ).all()
 
     shared_documents = []
+    permissions = {}
 
-    for share in my_shares:
-        document = db.session.get(
-            Document,
-            share.document_id,
-        )
+    for share in shares:
+        document = db.session.get(Document, share.document_id)
 
-        if (
-            document is not None
-            and document.tenant_id == current_user.tenant_id
-        ):
+        if document and document.tenant_id == current_user.tenant_id:
             shared_documents.append(document)
+            permissions[document.id] = share.can_download
 
-    owned_ids = {
-        doc.id for doc in owned_documents
-    }
+    owned_ids = {document.id for document in owned_documents}
 
-    user_documents = owned_documents + [
-        doc
-        for doc in shared_documents
-        if doc.id not in owned_ids
+    visible_documents = owned_documents + [
+        document for document in shared_documents
+        if document.id not in owned_ids
     ]
 
-    download_permissions = {
-        share.document_id: share.can_download
-        for share in my_shares
-    }
-
-    content = """
-    <h1>My Documents</h1>
-
-    """ + FLASH_TEMPLATE + """
-
-    <form method="POST" enctype="multipart/form-data">
-        <input type="hidden"
-               name="csrf_token"
-               value="{{ csrf_token() }}">
-
-        <input type="file"
-               name="document"
-               accept=".pdf,.txt,.png,.jpg,.jpeg,.docx,.xlsx"
-               required>
-
-        <button type="submit">Upload Document</button>
-    </form>
-
-    <hr>
-
-    {% if documents %}
-        {% for doc in documents %}
-            <div class="document-card">
-
-                <strong>{{ doc.original_filename }}</strong>
-
-                <p>Owner: {{ doc.owner.username }}</p>
-
-                <p>Uploaded: {{ doc.uploaded_at }}</p>
-
-                <p>SHA-256:</p>
-
-                <code>{{ doc.sha256_hash }}</code>
-
-                {% if doc.owner_id == current_user.id %}
-                    <form class="inline-form"
-                          method="POST"
-                          action="{{ url_for(
-                              'share_document',
-                              document_id=doc.id
-                          ) }}">
-
-                        <input type="hidden"
-                               name="csrf_token"
-                               value="{{ csrf_token() }}">
-
-                        <input type="text"
-                               name="username"
-                               placeholder="Recipient username"
-                               required>
-
-                        <select name="permission">
-                            <option value="view">
-                                View only
-                            </option>
-
-                            <option value="download">
-                                Allow download
-                            </option>
-                        </select>
-
-                        <button type="submit">
-                            Share Document
-                        </button>
-                    </form>
-                {% endif %}
-
-                {% if doc.owner_id == current_user.id
-                      or download_permissions.get(doc.id, false) %}
-                    <p>
-                        <a href="{{ url_for(
-                            'download_document',
-                            document_id=doc.id
-                        ) }}">
-                            Download document
-                        </a>
-                    </p>
-                {% else %}
-                    <p>
-                        View-only access.
-                        Download is not permitted.
-                    </p>
-                {% endif %}
-
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No documents uploaded or shared with you yet.</p>
-    {% endif %}
-
-    <p>
-        <a href="{{ url_for('dashboard') }}">
-            Back to Dashboard
-        </a>
-    </p>
-    """
-
-    return page(
-        content,
-        documents=user_documents,
-        download_permissions=download_permissions,
+    return render_template(
+        "documents.html",
+        documents=visible_documents,
+        permissions=permissions
     )
 
 
-# --------------------------------------------------
-# 11. Share document with another user
-# --------------------------------------------------
+# -------------------- SHARE DOCUMENT --------------------
 
-@app.route(
-    "/documents/<int:document_id>/share",
-    methods=["POST"],
-)
+@app.route("/documents/<int:document_id>/share", methods=["POST"])
 @login_required
 def share_document(document_id):
-    document = db.session.get(
-        Document,
-        document_id,
-    )
+    document = db.session.get(Document, document_id)
 
     if document is None:
         abort(404)
@@ -891,124 +366,109 @@ def share_document(document_id):
     ):
         abort(403)
 
-    username = request.form.get(
-        "username", ""
-    ).strip()
+    username = request.form.get("username", "").strip()
+    permission = request.form.get("permission", "view")
 
-    permission = request.form.get(
-        "permission", "view"
-    )
-
-    if permission not in ("view", "download"):
+    if permission not in {"view", "download"}:
         abort(400)
 
-    target_user = User.query.filter_by(
+    recipient = User.query.filter_by(
         username=username,
-        tenant_id=current_user.tenant_id,
+        tenant_id=current_user.tenant_id
     ).first()
 
-    if target_user is None:
-        flash("User not found in your company.")
+    if recipient is None:
+        flash("Recipient username not found.", "error")
         return redirect(url_for("documents"))
 
-    if target_user.id == current_user.id:
-        flash("You already own this document.")
+    if recipient.id == current_user.id:
+        flash("You cannot share a document with yourself.", "error")
         return redirect(url_for("documents"))
 
-    existing_share = DocumentShare.query.filter_by(
+    share = DocumentShare.query.filter_by(
         document_id=document.id,
-        shared_with_id=target_user.id,
+        shared_with_id=recipient.id
     ).first()
 
-    if existing_share:
-        existing_share.can_download = (
-            permission == "download"
-        )
-
-        existing_share.tenant_id = current_user.tenant_id
-        existing_share.shared_by_id = current_user.id
-
+    if share:
+        share.can_download = permission == "download"
+        share.shared_by_id = current_user.id
+        share.tenant_id = current_user.tenant_id
     else:
-        share = DocumentShare(
-            document_id=document.id,
-            shared_with_id=target_user.id,
-            shared_by_id=current_user.id,
-            tenant_id=current_user.tenant_id,
-            can_download=(permission == "download"),
+        db.session.add(
+            DocumentShare(
+                document_id=document.id,
+                shared_with_id=recipient.id,
+                shared_by_id=current_user.id,
+                tenant_id=current_user.tenant_id,
+                can_download=(permission == "download")
+            )
         )
-
-        db.session.add(share)
 
     record_audit(
         "document_shared",
         document_id=document.id,
-        target_user_id=target_user.id,
-        details=(
-            f"Permission set to {permission} "
-            f"for {target_user.username}"
-        ),
+        target_user_id=recipient.id,
+        details=f"Shared with {recipient.username}; permission={permission}"
     )
 
     db.session.commit()
-
-    flash(
-        f"Document shared with {target_user.username}."
-    )
-
+    flash(f"Document shared with {recipient.username}.", "success")
     return redirect(url_for("documents"))
 
 
-# --------------------------------------------------
-# 12. Download document with access control
-# --------------------------------------------------
+# -------------------- DOWNLOAD DOCUMENT --------------------
 
-@app.route(
-    "/documents/<int:document_id>/download"
-)
+@app.route("/documents/<int:document_id>/download")
 @login_required
 def download_document(document_id):
-    document = db.session.get(
-        Document,
-        document_id,
-    )
+    document = db.session.get(Document, document_id)
 
-    if document is None:
+    if document is None or document.tenant_id != current_user.tenant_id:
         abort(404)
 
-    is_owner = (
-        document.owner_id == current_user.id
-        and document.tenant_id == current_user.tenant_id
-    )
+    is_owner = document.owner_id == current_user.id
 
-    share = DocumentShare.query.filter_by(
-        document_id=document.id,
-        shared_with_id=current_user.id,
-        tenant_id=current_user.tenant_id,
-        can_download=True,
-    ).first()
+    share = None
+
+    if not is_owner:
+        share = DocumentShare.query.filter_by(
+            document_id=document.id,
+            shared_with_id=current_user.id,
+            tenant_id=current_user.tenant_id,
+            can_download=True
+        ).first()
 
     if not is_owner and share is None:
+        record_audit(
+            "document_download_denied",
+            document_id=document.id,
+            details=f"Unauthorized download attempt for {document.original_filename}"
+        )
+        db.session.commit()
         abort(403)
+
+    file_path = Path(app.config["UPLOAD_FOLDER"]) / document.stored_filename
+
+    if not file_path.is_file():
+        abort(404)
 
     record_audit(
         "document_download",
         document_id=document.id,
-        details="Document downloaded",
+        details=f"Downloaded {document.original_filename}"
     )
-
     db.session.commit()
 
     return send_from_directory(
         app.config["UPLOAD_FOLDER"],
         document.stored_filename,
         as_attachment=True,
-        download_name=document.original_filename,
+        download_name=document.original_filename
     )
 
 
-# --------------------------------------------------
-# 13. Admin dashboard and audit logs
-# --------------------------------------------------
+# -------------------- ADMIN DASHBOARD --------------------
 
 @app.route("/admin")
 @login_required
@@ -1016,100 +476,76 @@ def admin_dashboard():
     if current_user.role != "admin":
         abort(403)
 
-    total_users = User.query.filter_by(
+    users = User.query.filter_by(
+        tenant_id=current_user.tenant_id
+    ).order_by(User.username).all()
+
+    logs = AuditLog.query.filter_by(
+        tenant_id=current_user.tenant_id
+    ).order_by(AuditLog.created_at.desc()).limit(100).all()
+
+    document_count = Document.query.filter_by(
         tenant_id=current_user.tenant_id
     ).count()
 
-    total_documents = Document.query.filter_by(
+    share_count = DocumentShare.query.filter_by(
         tenant_id=current_user.tenant_id
     ).count()
 
-    total_shares = DocumentShare.query.filter_by(
-        tenant_id=current_user.tenant_id
-    ).count()
-
-    audit_logs = (
-        AuditLog.query.filter_by(
-            tenant_id=current_user.tenant_id
-        )
-        .order_by(AuditLog.created_at.desc())
-        .limit(100)
-        .all()
-    )
-
-    content = """
-    <h1>Admin Dashboard</h1>
-
-    <p>Users in tenant: {{ total_users }}</p>
-
-    <p>Documents in tenant: {{ total_documents }}</p>
-
-    <p>Document shares: {{ total_shares }}</p>
-
-    <h2>Recent Audit Events (up to 100)</h2>
-
-    {% if audit_logs %}
-        {% for log in audit_logs %}
-            <div class="document-card">
-
-                <strong>{{ log.action }}</strong>
-
-                <p>Time: {{ log.created_at }}</p>
-
-                <p>Actor user ID: {{ log.actor_id }}</p>
-
-                <p>Document ID: {{ log.document_id }}</p>
-
-                <p>Target user ID: {{ log.target_user_id }}</p>
-
-                <p>Details: {{ log.details or "" }}</p>
-
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No audit events recorded yet.</p>
-    {% endif %}
-
-    <p>
-        <a href="{{ url_for('dashboard') }}">
-            Back to Dashboard
-        </a>
-    </p>
-    """
-
-    return page(
-        content,
-        total_users=total_users,
-        total_documents=total_documents,
-        total_shares=total_shares,
-        audit_logs=audit_logs,
+    return render_template(
+        "admin.html",
+        users=users,
+        logs=logs,
+        user_count=len(users),
+        document_count=document_count,
+        share_count=share_count
     )
 
 
-# --------------------------------------------------
-# 14. Logout
-# --------------------------------------------------
+# -------------------- LOGOUT --------------------
 
 @app.route("/logout", methods=["POST"])
 @login_required
 def logout():
-    record_audit(
-        "logout",
-        details="User logged out",
-    )
-
+    record_audit("logout", details="User logged out")
     db.session.commit()
 
     logout_user()
-
-    flash("You have logged out successfully.")
+    flash("You have logged out.", "success")
 
     return redirect(url_for("login"))
 
 
-# --------------------------------------------------
-# 15. Create database tables and start application
-# --------------------------------------------------
+# -------------------- ERROR PAGES --------------------
+
+@app.errorhandler(403)
+def forbidden(_error):
+    return render_template(
+        "error.html",
+        code=403,
+        message="You do not have permission to access this page."
+    ), 403
+
+
+@app.errorhandler(404)
+def not_found(_error):
+    return render_template(
+        "error.html",
+        code=404,
+        message="The requested page or document was not found."
+    ), 404
+
+
+@app.errorhandler(413)
+def too_large(_error):
+    return render_template(
+        "error.html",
+        code=413,
+        message="File too large. Maximum size is 10 MB."
+    ), 413
+
+
+# -------------------- INITIALIZE DATABASE --------------------
 
 with app.app_context():
     db.create_all()

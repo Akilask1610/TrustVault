@@ -1,0 +1,47 @@
+
+{% extends "base.html" %}
+
+{% block title %}Register - TrustVault{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <h1>Create Account</h1>
+    <p class="muted">Create your TrustVault account.</p>
+
+    <form method="POST">
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token() }}">
+
+        <label for="username">Username</label>
+        <input id="username"
+               name="username"
+               maxlength="80"
+               autocomplete="username"
+               required>
+
+        <label for="password">Password</label>
+        <input id="password"
+               name="password"
+               type="password"
+               minlength="8"
+               autocomplete="new-password"
+               required>
+
+        <label for="confirm_password">Confirm Password</label>
+        <input id="confirm_password"
+               name="confirm_password"
+               type="password"
+               minlength="8"
+               autocomplete="new-password"
+               required>
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <p>
+        Already registered?
+        <a href="{{ url_for('login') }}">Login</a>.
+    </p>
+</section>
+{% endblock %}

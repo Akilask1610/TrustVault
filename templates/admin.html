@@ -1,0 +1,87 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - TrustVault{% endblock %}
+
+{% block content %}
+<section class="panel">
+    <p class="muted">RESTRICTED AREA</p>
+    <h1>Admin Dashboard</h1>
+
+    <div class="grid">
+        <div class="stat">
+            Users
+            <strong>{{ user_count }}</strong>
+        </div>
+
+        <div class="stat">
+            Documents
+            <strong>{{ document_count }}</strong>
+        </div>
+
+        <div class="stat">
+            Shared Documents
+            <strong>{{ share_count }}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Users</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Tenant</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.role }}</td>
+                    <td>{{ user.tenant_id }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Recent Audit Log</h2>
+    <p class="muted">Latest 100 recorded events.</p>
+
+    {% if logs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Actor ID</th>
+                    <th>Action</th>
+                    <th>Document ID</th>
+                    <th>Target User ID</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td>{{ log.created_at }}</td>
+                        <td>{{ log.actor_id }}</td>
+                        <td>{{ log.action }}</td>
+                        <td>{{ log.document_id or "-" }}</td>
+                        <td>{{ log.target_user_id or "-" }}</td>
+                        <td>{{ log.details or "" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No audit records yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,38 @@
+
+{% extends "base.html" %}
+
+{% block title %}Login - TrustVault{% endblock %}
+
+{% block content %}
+<section class="panel narrow">
+    <h1>Login</h1>
+    <p class="muted">Sign in to access your documents.</p>
+
+    <form method="POST">
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token() }}">
+
+        <label for="username">Username</label>
+        <input id="username"
+               name="username"
+               maxlength="80"
+               autocomplete="username"
+               required>
+
+        <label for="password">Password</label>
+        <input id="password"
+               name="password"
+               type="password"
+               autocomplete="current-password"
+               required>
+
+        <button type="submit">Login</button>
+    </form>
+
+    <p>
+        Don't have an account?
+        <a href="{{ url_for('register') }}">Register here</a>.
+    </p>
+</section>
+{% endblock %}

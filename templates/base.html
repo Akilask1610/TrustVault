@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}TrustVault{% endblock %}</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        header {
+            background: #111c31;
+            border-bottom: 1px solid #334155;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand {
+            color: #7dd3fc;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        nav a, a { color: #7dd3fc; }
+
+        nav a { text-decoration: none; }
+
+        main {
+            width: min(1000px, 94%);
+            margin: 30px auto;
+        }
+
+        .panel {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .narrow {
+            max-width: 520px;
+            margin: 35px auto;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 5px;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 11px;
+            margin: 5px 0 12px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            font: inherit;
+        }
+
+        input, select {
+            background: #0f172a;
+            color: white;
+        }
+
+        button, .button {
+            display: inline-block;
+            background: #38bdf8;
+            color: #082f49;
+            border: 0;
+            border-radius: 8px;
+            padding: 11px 15px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        button.secondary, .button.secondary {
+            background: #334155;
+            color: white;
+        }
+
+        .inline-form { display: inline; }
+        .inline-form button { width: auto; margin: 0; }
+
+        .muted { color: #94a3b8; }
+
+        .flash {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #334155;
+        }
+
+        .flash.success { border-left: 4px solid #4ade80; }
+        .flash.error { border-left: 4px solid #fb7185; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .stat {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 28px;
+            color: #7dd3fc;
+        }
+
+        .doc {
+            padding: 16px 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        code { overflow-wrap: anywhere; color: #bae6fd; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            display: block;
+            overflow-x: auto;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #334155;
+            vertical-align: top;
+        }
+
+        footer {
+            text-align: center;
+            padding: 22px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <a class="brand" href="{{ url_for('home') }}">TrustVault</a>
+
+    <nav>
+        <a href="{{ url_for('home') }}">Home</a>
+
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('documents') }}">My Documents</a>
+
+            {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+            {% endif %}
+
+            <form class="inline-form"
+                  method="POST"
+                  action="{{ url_for('logout') }}">
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+                <button class="secondary" type="submit">Logout</button>
+            </form>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('register') }}">Register</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer>
+    TrustVault — Secure Document Sharing and Audit Trail
+</footer>
+</body>
+</html>
