@@ -34,3 +34,17 @@
 - **What I changed:** Added a user_loader function that retrieves the user from the database and handles invalid user IDs. Added UserMixin to the User model.
 - **Test:** Reopen the local landing page and verify that the exception no longer occurs.
 - **Commit link:** Add the actual GitHub commit URL after pushing, if available.
+
+
+## Entry 4 — 2026-10-23
+
+- **Task:** Implement registration, login, dashboard, and logout.
+- **Prompt:** Build a clean Flask authentication flow for TrustVault.
+- **AI output:** Registration and login routes, password hashing,
+  protected dashboard, logout, and CSRF protection.
+- **What went wrong:** Earlier code edits caused a missing import
+  and duplicate SQLAlchemy initialization.
+- **What I changed:** Replaced app.py with one consistent application
+  structure and initialized SQLAlchemy only once.
+- **Testing:** Record actual registration, login, and logout results.
+- **Commit link:** Add the real GitHub commit URL after pushing.
