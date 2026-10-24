@@ -70,24 +70,22 @@
 - **Test result:** All 7 tests passed in the original project using pytest: 2 admin-access tests and 5 upload-security tests.
 - **Commit link:** https://github.com/Akilask1610/TrustVault/commit/341d13e2a701966aa5322da3d30165cb32c18ad9
 
-## Entry 8 — Login Rate Limiting
+## Entry 8 â€” Login Rate Limiting
 
-- Added Flask-Limiter to protect the login endpoint against repeated
-  failed login attempts.
-- Configured a limit of 5 requests per minute for `/login`.
-- Added a test verifying that the sixth login attempt receives HTTP 429.
-- Isolated rate-limit state during tests so security tests do not
-  interfere with each other.
-- Updated `requirements.txt` with Flask-Limiter.
-- Validation: `python -m pytest -v` — 8 tests passed.
+- **Date:** 2026-10-24
+- **Prompt:** Help protect the Flask login endpoint from repeated requests and add tests for the rate limit.
+- **AI output:** Added Flask-Limiter, configured a limit of 5 requests per minute for `/login`, and added a test for HTTP 429 on the sixth attempt.
+- **What was wrong:** The login endpoint needed protection against repeated login attempts.
+- **What I changed:** Added the rate limiter dependency and configuration, tested the sixth-attempt response, and isolated rate-limit state during tests.
+- **Test result:** `python -m pytest -v` â€” 8 tests passed at this stage.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/0d54e69f60cb8351303ae3c67393f56ee40ee519
 
-## Entry 9 — Failed Login Audit Logging
+## Entry 9 â€” Failed Login Audit Logging
 
-- Added audit logging for failed login attempts when the username
-  belongs to an existing user.
-- Recorded the user ID, tenant ID, event type, and a generic failure
-  detail without storing the submitted password.
-- Kept the same generic login error message for failed attempts.
-- Added a pytest test to verify that a wrong password creates a
-  `login_failed` audit record.
-- Validation: `python -m pytest -v` — 9 tests passed.
+- **Date:** 2026-10-24
+- **Prompt:** Add audit logging for failed login attempts and write a pytest test to verify that the event is recorded securely.
+- **AI output:** Added a `login_failed` audit event for an existing username when the password is incorrect, without recording the submitted password.
+- **What was wrong:** Failed login attempts for existing users were not being recorded in the audit log.
+- **What I changed:** Recorded the user ID, tenant ID, event type, and generic failure detail; retained a generic login error message; and added a test for the audit record.
+- **Test result:** `python -m pytest -v` â€” 9 tests passed at this stage.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/c2215fe69671f28a3648e64e368ef7bc00426512
