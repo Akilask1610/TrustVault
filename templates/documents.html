@@ -47,6 +47,18 @@
                     <code>{{ doc.sha256_hash }}</code>
                 </p>
 
+                {% if doc.original_filename.lower().endswith('.pdf') %}
+                    <p>
+                        <a class="button"
+                           href="{{ url_for('view_document',
+                                            document_id=doc.id) }}"
+                           target="_blank"
+                           rel="noopener">
+                            View PDF
+                        </a>
+                    </p>
+                {% endif %}
+
                 {% if doc.owner_id == current_user.id %}
                     <p>
                         <a class="button"

@@ -444,6 +444,54 @@ def share_document(document_id):
     return redirect(url_for("documents"))
 
 
+
+
+@app.route("/documents/<int:document_id>/view")
+@login_required
+def view_document(document_id):
+    document = db.session.get(Document, document_id)
+
+    if document is None or document.tenant_id != current_user.tenant_id:
+        abort(404)
+
+    is_owner = document.owner_id == current_user.id
+
+    share = None
+
+    if not is_owner:
+        share = DocumentShare.query.filter_by(
+            document_id=document.id,
+            shared_with_id=current_user.id,
+            tenant_id=current_user.tenant_id
+        ).first()
+
+    if not is_owner and share is None:
+        abort(403)
+
+    if not document.original_filename.lower().endswith(".pdf"):
+        abort(415, description="Preview is currently available only for PDF files.")
+
+    file_path = Path(app.config["UPLOAD_FOLDER"]) / document.stored_filename
+
+    if not file_path.is_file():
+        abort(404)
+
+    record_audit(
+        "document_view",
+        document_id=document.id,
+        details=f"Viewed {document.original_filename}"
+    )
+    db.session.commit()
+
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        document.stored_filename,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=document.original_filename
+    )
+
+
 # -------------------- DOWNLOAD DOCUMENT --------------------
 
 @app.route("/documents/<int:document_id>/download")
