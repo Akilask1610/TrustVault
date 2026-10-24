@@ -59,3 +59,13 @@
 - **What I changed:** Added an audit event for unauthorized download attempts before returning the forbidden response.
 - **Test result:** Tested the view-only document download again. The server returned HTTP 403, and the Admin Dashboard showed the document_download_denied event for Akila_Resume.pdf.
 - **Commit link:** https://github.com/Akilask1610/TrustVault/commit/63e26d07c40b304dee393f3f1cb29c377a97da41
+
+## Entry 7 - 2026-10-24
+
+- **Task:** Add security tests for admin access, document uploads, file integrity, audit logging, and cross-tenant download protection.
+- **Prompt:** Help me write pytest tests to verify that normal users cannot access admin pages, invalid uploads are rejected, valid uploads are recorded in the audit log, SHA-256 hashes match uploaded file contents, and users cannot download documents belonging to another tenant.
+- **AI output:** Created tests for admin authorization, upload validation, audit logging, SHA-256 integrity, and cross-tenant download protection.
+- **What was wrong:** The original test fixture changed the database URI after the Flask-SQLAlchemy extension had already initialized, so database isolation was not guaranteed.
+- **What I changed:** Updated app.py to support a configurable DATABASE_URL, isolated the test database and upload storage using tests/conftest.py, and added security tests.
+- **Test result:** All 7 tests passed in the original project using pytest: 2 admin-access tests and 5 upload-security tests.
+- **Commit link:** Pending commit and push.
