@@ -68,4 +68,4 @@
 - **What was wrong:** The original test fixture changed the database URI after the Flask-SQLAlchemy extension had already initialized, so database isolation was not guaranteed.
 - **What I changed:** Updated app.py to support a configurable DATABASE_URL, isolated the test database and upload storage using tests/conftest.py, and added security tests.
 - **Test result:** All 7 tests passed in the original project using pytest: 2 admin-access tests and 5 upload-security tests.
-- **Commit link:** Pending commit and push.
+- **Commit link:** https://github.com/Akilask1610/TrustVault/commit/341d13e2a701966aa5322da3d30165cb32c18ad9
