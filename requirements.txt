@@ -7,3 +7,4 @@ pytest
 Flask-Limiter
 
 gunicorn
+psycopg2-binary

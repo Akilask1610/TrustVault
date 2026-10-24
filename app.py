@@ -27,9 +27,14 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get(
     "SECRET_KEY", "change-this-before-deployment"
 )
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL", "sqlite:///trustvault.db"
-)
+
+database_url = os.environ.get("DATABASE_URL", "sqlite:///trustvault.db")
+
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
@@ -572,6 +577,37 @@ def too_large(_error):
 with app.app_context():
     db.create_all()
 
+    admin_username = os.environ.get("BOOTSTRAP_ADMIN_USERNAME")
+    admin_password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+
+    if admin_username and admin_password:
+        existing_admin = User.query.filter_by(role="admin").first()
+
+        if not existing_admin:
+            if len(admin_password) < 12:
+                raise ValueError("Admin password must be at least 12 characters.")
+
+            existing_user = User.query.filter_by(
+                username=admin_username
+            ).first()
+
+            if existing_user:
+                raise ValueError(
+                    "Bootstrap admin username already belongs to another user."
+                )
+
+            admin = User(
+                username=admin_username,
+                role="admin",
+                tenant_id=1
+            )
+            admin.set_password(admin_password)
+            db.session.add(admin)
+            db.session.commit()
+
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
