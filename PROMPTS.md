@@ -69,3 +69,14 @@
 - **What I changed:** Updated app.py to support a configurable DATABASE_URL, isolated the test database and upload storage using tests/conftest.py, and added security tests.
 - **Test result:** All 7 tests passed in the original project using pytest: 2 admin-access tests and 5 upload-security tests.
 - **Commit link:** https://github.com/Akilask1610/TrustVault/commit/341d13e2a701966aa5322da3d30165cb32c18ad9
+
+## Entry 8 — Login Rate Limiting
+
+- Added Flask-Limiter to protect the login endpoint against repeated
+  failed login attempts.
+- Configured a limit of 5 requests per minute for `/login`.
+- Added a test verifying that the sixth login attempt receives HTTP 429.
+- Isolated rate-limit state during tests so security tests do not
+  interfere with each other.
+- Updated `requirements.txt` with Flask-Limiter.
+- Validation: `python -m pytest -v` — 8 tests passed.

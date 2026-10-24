@@ -8,6 +8,8 @@ from flask import (
     Flask, abort, flash, redirect, render_template,
     request, send_from_directory, url_for
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_login import (
     LoginManager, UserMixin, current_user, login_required,
     login_user, logout_user
@@ -41,6 +43,12 @@ ALLOWED_EXTENSIONS = {
 
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
+)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -219,6 +227,7 @@ def register():
 # -------------------- LOGIN --------------------
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))

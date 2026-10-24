@@ -17,6 +17,8 @@ _test_upload_dir = tempfile.TemporaryDirectory(prefix="trustvault-test-")
 _test_upload_path = Path(_test_upload_dir.name)
 
 app.config["TESTING"] = True
+app.config["RATELIMIT_ENABLED"] = False
+app_module.limiter.enabled = False
 app.config["WTF_CSRF_ENABLED"] = False
 app.config["UPLOAD_FOLDER"] = str(_test_upload_path)
 
