@@ -1,7 +1,8 @@
+
 from app import app, limiter
 
 
-def test_login_is_rate_limited_after_five_attempts():
+def test_login_is_rate_limited_after_ten_attempts():
     limiter.reset()
     limiter.enabled = True
 
@@ -15,7 +16,7 @@ def test_login_is_rate_limited_after_five_attempts():
                         "password": "wrong",
                     },
                 )
-                for i in range(5)
+                for i in range(10)
             ]
 
             assert all(response.status_code == 200 for response in responses)
@@ -27,7 +28,8 @@ def test_login_is_rate_limited_after_five_attempts():
                     "password": "wrong",
                 },
             )
+
             assert response.status_code == 429
     finally:
-        limiter.reset()
         limiter.enabled = False
+        limiter.reset()
