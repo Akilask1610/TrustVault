@@ -244,6 +244,17 @@ def login():
             db.session.commit()
             return redirect(url_for("dashboard"))
 
+        if user:
+            db.session.add(
+                AuditLog(
+                    actor_id=user.id,
+                    tenant_id=user.tenant_id,
+                    action="login_failed",
+                    details="Invalid password",
+                )
+            )
+            db.session.commit()
+
         flash("Invalid username or password.", "error")
 
     return render_template("login.html")

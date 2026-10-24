@@ -80,3 +80,14 @@
   interfere with each other.
 - Updated `requirements.txt` with Flask-Limiter.
 - Validation: `python -m pytest -v` — 8 tests passed.
+
+## Entry 9 — Failed Login Audit Logging
+
+- Added audit logging for failed login attempts when the username
+  belongs to an existing user.
+- Recorded the user ID, tenant ID, event type, and a generic failure
+  detail without storing the submitted password.
+- Kept the same generic login error message for failed attempts.
+- Added a pytest test to verify that a wrong password creates a
+  `login_failed` audit record.
+- Validation: `python -m pytest -v` — 9 tests passed.
