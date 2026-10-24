@@ -9,3 +9,5 @@ private_uploads/
 .pytest_cache/
 
 *.db
+
+create_admin.py
